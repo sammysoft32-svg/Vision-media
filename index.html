@@ -216,7 +216,7 @@
       .hero-stats{gap:1.5rem;}
     }
 
-    /* ===== ADMIN UPLOAD PANEL (MINIMAL ADDITIONS) ===== */
+    /* ===== ADMIN UPLOAD PANEL (hidden by default) ===== */
     .admin-toggle-btn {
       position: fixed;
       bottom: 24px;
@@ -231,11 +231,12 @@
       box-shadow: 0 4px 12px rgba(0,0,0,0.2);
       cursor: pointer;
       font-size: 1.4rem;
-      display: flex;
+      display: none; /* hidden unless admin mode */
       align-items: center;
       justify-content: center;
       transition: transform 0.2s, background 0.2s;
     }
+    .admin-toggle-btn.visible { display: flex; }
     .admin-toggle-btn:hover { transform: scale(1.05); background: var(--red); }
     .upload-panel {
       position: fixed;
@@ -554,7 +555,7 @@
   <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.296.045-.578.063-1.092-.069-.972-.239-2.002-.839-2.646-1.601-.165-.195-.298-.332-.422-.558-.372-.681-.558-1.245-.558-1.812 0-.567.297-1.072.445-1.431.148-.359.594-.449.792-.449.198 0 .396.002.594.004.198.002.297-.076.495.38.198.455.693 1.682.754 1.804.061.122.101.265.02.428-.081.163-.122.265-.243.408-.121.143-.256.319-.366.428-.122.122-.25.255-.108.499.143.245.638 1.052 1.368 1.703.94.837 1.732 1.097 1.979 1.221.247.124.396.104.545-.062.149-.166.644-.752.817-1.009.173-.257.297-.214.495-.124.198.09 1.26.594 1.477.707.217.113.361.169.416.263.055.094.055.54-.089.945z"/></svg>
 </a>
 
-<!-- ========== ADMIN UPLOAD TOGGLE ========== -->
+<!-- ========== ADMIN UPLOAD TOGGLE (hidden unless ?admin) ========== -->
 <button class="admin-toggle-btn" id="adminToggle" title="Upload Images">⚙️</button>
 
 <!-- ========== UPLOAD PANEL ========== -->
@@ -601,6 +602,14 @@
 
 <script>
   (function() {
+    // ---------- CHECK ADMIN MODE ----------
+    const urlParams = new URLSearchParams(window.location.search);
+    const isAdmin = urlParams.has('admin');
+    const adminToggle = document.getElementById('adminToggle');
+    if (isAdmin && adminToggle) {
+      adminToggle.classList.add('visible');
+    }
+
     // ---------- ORIGINAL FUNCTIONALITY (mobile menu, smooth scroll) ----------
     const hamburgerBtn = document.getElementById('hamburgerBtn');
     const mobileMenu = document.getElementById('mobileMenu');
@@ -693,106 +702,107 @@
       });
     });
 
-    // ---------- UPLOAD PANEL ----------
-    const toggleBtn = document.getElementById('adminToggle');
-    const panel = document.getElementById('uploadPanel');
-    const closeBtn = document.getElementById('panelClose');
-    const dropZone = document.getElementById('dropZone');
-    const fileInput = document.getElementById('fileInput');
-    const previewArea = document.getElementById('previewArea');
-    const progressContainer = document.getElementById('progressContainer');
-    const progressFill = document.getElementById('progressFill');
-    const uploadBtn = document.getElementById('uploadBtn');
-    const titleInput = document.getElementById('imageTitle');
-    const categorySelect = document.getElementById('imageCategory');
+    // ---------- UPLOAD PANEL (only active if admin) ----------
+    if (isAdmin) {
+      const panel = document.getElementById('uploadPanel');
+      const closeBtn = document.getElementById('panelClose');
+      const dropZone = document.getElementById('dropZone');
+      const fileInput = document.getElementById('fileInput');
+      const previewArea = document.getElementById('previewArea');
+      const progressContainer = document.getElementById('progressContainer');
+      const progressFill = document.getElementById('progressFill');
+      const uploadBtn = document.getElementById('uploadBtn');
+      const titleInput = document.getElementById('imageTitle');
+      const categorySelect = document.getElementById('imageCategory');
 
-    let selectedFiles = [];
+      let selectedFiles = [];
 
-    toggleBtn.addEventListener('click', () => panel.classList.toggle('visible'));
-    closeBtn.addEventListener('click', () => panel.classList.remove('visible'));
+      adminToggle.addEventListener('click', () => panel.classList.toggle('visible'));
+      closeBtn.addEventListener('click', () => panel.classList.remove('visible'));
 
-    dropZone.addEventListener('click', () => fileInput.click());
-    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
-    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-    dropZone.addEventListener('drop', e => {
-      e.preventDefault();
-      dropZone.classList.remove('dragover');
-      handleFiles(Array.from(e.dataTransfer.files));
-    });
-    fileInput.addEventListener('change', e => handleFiles(Array.from(e.target.files)));
-
-    function handleFiles(files) {
-      const imageFiles = files.filter(f => f.type.startsWith('image/'));
-      selectedFiles = [...selectedFiles, ...imageFiles];
-      renderPreviews();
-    }
-
-    function renderPreviews() {
-      previewArea.innerHTML = '';
-      selectedFiles.forEach((file, idx) => {
-        const reader = new FileReader();
-        reader.onload = e => {
-          const div = document.createElement('div');
-          div.className = 'preview-thumb';
-          div.innerHTML = `<img src="${e.target.result}" /><button class="remove-btn" data-index="${idx}">✕</button>`;
-          previewArea.appendChild(div);
-        };
-        reader.readAsDataURL(file);
+      dropZone.addEventListener('click', () => fileInput.click());
+      dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+      dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+      dropZone.addEventListener('drop', e => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        handleFiles(Array.from(e.dataTransfer.files));
       });
-      setTimeout(() => {
-        document.querySelectorAll('.remove-btn').forEach(btn => {
-          btn.addEventListener('click', (e) => {
-            const index = parseInt(e.target.dataset.index);
-            selectedFiles.splice(index, 1);
-            renderPreviews();
-            fileInput.value = '';
-          });
-        });
-      }, 50);
-    }
+      fileInput.addEventListener('change', e => handleFiles(Array.from(e.target.files)));
 
-    uploadBtn.addEventListener('click', async () => {
-      if (selectedFiles.length === 0) return alert('Please select at least one image.');
-      const title = titleInput.value.trim();
-      if (!title) return alert('Please enter a title.');
-      const category = categorySelect.value;
-
-      uploadBtn.disabled = true;
-      uploadBtn.innerHTML = '<span class="spinner"></span> Processing...';
-      progressContainer.style.display = 'block';
-      progressFill.style.width = '0%';
-
-      try {
-        for (let i = 0; i < selectedFiles.length; i++) {
-          const file = selectedFiles[i];
-          const dataUrl = await new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onload = e => resolve(e.target.result);
-            reader.readAsDataURL(file);
-          });
-          portfolioImages.push({
-            title: title + (selectedFiles.length > 1 ? ` (${i+1})` : ''),
-            category: category,
-            src: dataUrl
-          });
-          progressFill.style.width = ((i + 1) / selectedFiles.length) * 100 + '%';
-        }
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(portfolioImages));
-        renderGrid();
-        selectedFiles = [];
+      function handleFiles(files) {
+        const imageFiles = files.filter(f => f.type.startsWith('image/'));
+        selectedFiles = [...selectedFiles, ...imageFiles];
         renderPreviews();
-        titleInput.value = '';
-        fileInput.value = '';
-        progressContainer.style.display = 'none';
-        panel.classList.remove('visible');
-        alert('Images added successfully!');
-      } catch (err) {
-        alert('Error: ' + err.message);
-      } finally {
-        uploadBtn.disabled = false;
-        uploadBtn.innerHTML = 'Upload to Portfolio';
       }
-    });
+
+      function renderPreviews() {
+        previewArea.innerHTML = '';
+        selectedFiles.forEach((file, idx) => {
+          const reader = new FileReader();
+          reader.onload = e => {
+            const div = document.createElement('div');
+            div.className = 'preview-thumb';
+            div.innerHTML = `<img src="${e.target.result}" /><button class="remove-btn" data-index="${idx}">✕</button>`;
+            previewArea.appendChild(div);
+          };
+          reader.readAsDataURL(file);
+        });
+        setTimeout(() => {
+          document.querySelectorAll('.remove-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+              const index = parseInt(e.target.dataset.index);
+              selectedFiles.splice(index, 1);
+              renderPreviews();
+              fileInput.value = '';
+            });
+          });
+        }, 50);
+      }
+
+      uploadBtn.addEventListener('click', async () => {
+        if (selectedFiles.length === 0) return alert('Please select at least one image.');
+        const title = titleInput.value.trim();
+        if (!title) return alert('Please enter a title.');
+        const category = categorySelect.value;
+
+        uploadBtn.disabled = true;
+        uploadBtn.innerHTML = '<span class="spinner"></span> Processing...';
+        progressContainer.style.display = 'block';
+        progressFill.style.width = '0%';
+
+        try {
+          for (let i = 0; i < selectedFiles.length; i++) {
+            const file = selectedFiles[i];
+            const dataUrl = await new Promise((resolve) => {
+              const reader = new FileReader();
+              reader.onload = e => resolve(e.target.result);
+              reader.readAsDataURL(file);
+            });
+            portfolioImages.push({
+              title: title + (selectedFiles.length > 1 ? ` (${i+1})` : ''),
+              category: category,
+              src: dataUrl
+            });
+            progressFill.style.width = ((i + 1) / selectedFiles.length) * 100 + '%';
+          }
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(portfolioImages));
+          renderGrid();
+          selectedFiles = [];
+          renderPreviews();
+          titleInput.value = '';
+          fileInput.value = '';
+          progressContainer.style.display = 'none';
+          panel.classList.remove('visible');
+          alert('Images added successfully!');
+        } catch (err) {
+          alert('Error: ' + err.message);
+        } finally {
+          uploadBtn.disabled = false;
+          uploadBtn.innerHTML = 'Upload to Portfolio';
+        }
+      });
+    }
 
     // ---------- LIGHTBOX ----------
     function attachLightbox() {
